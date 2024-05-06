@@ -1,5 +1,3 @@
-const pool = require('../utils/database.js');
-const CONSTANTS = require('../utils/constants.js');
 const moment = require('moment');
 module.exports = class Todo {
     constructor({text, description, date=Date.now(), cost=1, completed=false, repeat=false, replenish=false}) {
