@@ -5,20 +5,36 @@ const jwt = require('jsonwebtoken');
 const saltRounds = 10;
 module.exports = class UserRepository {
     async create(data) {
-        const user = new User({username: data.username, password: data.password, email: data.email});
         try {
+            let user;
+            try {
+                user = new User({username: data.username, password: data.password, email: data.email});
+            } catch(error) {
+                return {error: error.message}
+            }
+            const foundUsername = await this.findByUsername(user.username);
+            console.log(foundUsername);
+            if(foundUsername) {
+                return {error: 'This username already exists.'};
+            }
+            const foundEmail = await this.findByEmail(user.email);
+            console.log(foundEmail);
+            if(foundEmail) {
+                return {error: 'This email already exists.'};
+            }
             const hash = await bcrypt.hash(user.password, saltRounds);
-            const result = await pool.query(`INSERT INTO users (username, password, email, nickname) VALUES (?, ?, ?, ?);`, 
+            await pool.query(`INSERT INTO users (username, password, email, nickname) VALUES (?, ?, ?, ?);`, 
                 [user.username, hash, user.email, user.username]);
-            return {msg: 'Successfully created user.', result};
+            return {msg: 'Successfully created user.'};
         } catch (error) {
-            return {error}
+            console.error(error);
+            return {error:'Something went wrong when creating user.'}
         }
     }
 
     async login(data) {
-        const { username, password } = data;
         try {
+            const { username, password } = data;
             const result = await this.findByUsername(username);
             if (!result) {
                 return { msg: 'User not found.' };
@@ -35,7 +51,7 @@ module.exports = class UserRepository {
                     maxSpoons: user.max_spoons,
                     spoonCarryOver: user.spoon_carry_over,
                     avatar: user.avatar
-                }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '7d' });
+                }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '3d' });
     
                 return { msg: 'Successful authentication.', token };
             } else {
@@ -43,13 +59,38 @@ module.exports = class UserRepository {
             }
         } catch (error) {
             console.error(error);
-            return { error: error.message || 'Something went wrong.' };
+            return { error: 'Something went wrong when logging in.' };
         }
     }
     
 
     async findByUsername(username) {
-        const result = await pool.query(`SELECT * FROM users WHERE username = ?;`, [username]);
-        return {msg: 'Successfully retrieved user.', user: result[0][0]};
+        try {
+            const result = await pool.query(`SELECT * FROM users WHERE username = ?;`, [username]);
+            const data = result[0][0];
+            if(data) {
+                console.log(data);
+                return {msg: 'Successfully retrieved user.', user: data};
+            } else {
+                return false;
+            }
+        } catch(error) {
+            console.error(error);
+        }
+    }
+
+    async findByEmail(email) {
+        try {
+            const result = await pool.query('SELECT * FROM users WHERE email = ?;', [email]);
+            const data = result[0][0];
+            if(data) {
+                console.log(data);
+                return {msg: 'Successfully retrieved user by email.', user: data};
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error(error);
+        }
     }
 };
