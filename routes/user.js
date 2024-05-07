@@ -3,26 +3,37 @@ const router = express.Router();
 const UserRepository = require('../repositories/UserRepository');
 
 const userRepository = new UserRepository();
-router.post('/users/create', async (req, res) => {
+const authMiddleware = require('../utils/authMiddleware.js');
+const errorHandler = require('../utils/errorHandler.js');
+router.post('/users/create', async (req, res, next) => {
     try {
         const result = await userRepository.create(req.body);
         res.send(result)
     } catch(error) {
-        res.send({
-            error
-        })
+        next(error);
     }
 });
 
-router.post('/users/login', async (req, res) => {
+router.post('/users/login', async (req, res, next) => {
     try {
         const result = await userRepository.login(req.body);
         res.send(result)
     } catch(error) {
-        res.send({
-            error: ''
-        })
+        next(error)
     }
 });
+
+router.get('/users/:id/spoons', authMiddleware, async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        const result = await userRepository.getSpoons(id);
+        console.log(result);
+        res.send(result);
+    } catch(error) {
+        next(error);
+    }
+});
+
+router.use(errorHandler);
 
 module.exports = router;

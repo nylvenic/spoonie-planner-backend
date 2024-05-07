@@ -3,6 +3,11 @@ const pool = require('../utils/database.js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const saltRounds = 10;
+const SEARCHTYPES = {
+    USERNAME: 'username',
+    EMAIL: 'email',
+    ID: 'id',
+}
 module.exports = class UserRepository {
     async create(data) {
         try {
@@ -12,13 +17,11 @@ module.exports = class UserRepository {
             } catch(error) {
                 return {error: error.message}
             }
-            const foundUsername = await this.findByUsername(user.username);
-            console.log(foundUsername);
+            const foundUsername = await this.findBy({type: SEARCHTYPES.USERNAME, value: data.username});
             if(foundUsername) {
                 return {error: 'This username already exists.'};
             }
-            const foundEmail = await this.findByEmail(user.email);
-            console.log(foundEmail);
+            const foundEmail = await this.findBy({type: SEARCHTYPES.EMAIL, value: data.email});
             if(foundEmail) {
                 return {error: 'This email already exists.'};
             }
@@ -63,14 +66,13 @@ module.exports = class UserRepository {
         }
     }
     
-
-    async findByUsername(username) {
+    async findBy({type, value}) {
         try {
-            const result = await pool.query(`SELECT * FROM users WHERE username = ?;`, [username]);
+            const result = await pool.query(`SELECT * FROM users WHERE ${type} = ?;`, [value]);
             const data = result[0][0];
             if(data) {
                 console.log(data);
-                return {msg: 'Successfully retrieved user.', user: data};
+                return {msg: `Successfully retrieved user by ${type}.`, user: data};
             } else {
                 return false;
             }
@@ -79,18 +81,26 @@ module.exports = class UserRepository {
         }
     }
 
-    async findByEmail(email) {
+    async changeSpoons({userId, cost, replenish}) {
         try {
-            const result = await pool.query('SELECT * FROM users WHERE email = ?;', [email]);
-            const data = result[0][0];
-            if(data) {
-                console.log(data);
-                return {msg: 'Successfully retrieved user by email.', user: data};
-            } else {
-                return false;
-            }
-        } catch (error) {
+            const userData = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            const newCurrentSpoons = replenish ? userData.current_spoons + cost : userData.current_spoons - cost;
+            const result = await pool.query(`UPDATE users SET current_spoons = ? WHERE id = ?`, [newCurrentSpoons, userId]);
+            console.log(result);
+            return {msg: `Successfully changed the spoons of ${userId}. New spoons: ${newCurrentSpoons}`};
+        } catch(error) {
             console.error(error);
+            return {error: 'Failed to update spoons.'};
+        }
+    }
+
+    async getSpoons(userId) {
+        try {
+            const result = await pool.query(`SELECT max_spoons, current_spoons FROM users WHERE id = ?`, [userId]);
+            return {msg: `Successfully obtained spoons for ${userId}.`, result: result[0][0]};
+        } catch(error) {
+            console.error(error);
+            return {error: 'Failed to update spoons.'};
         }
     }
 };
