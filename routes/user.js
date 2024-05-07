@@ -20,7 +20,7 @@ router.post('/users/login', async (req, res) => {
         res.send(result)
     } catch(error) {
         res.send({
-            error
+            error: ''
         })
     }
 });

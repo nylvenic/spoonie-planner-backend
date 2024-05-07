@@ -1,7 +1,8 @@
 const moment = require('moment');
 module.exports = class Todo {
-    constructor({text, description, date=Date.now(), cost=1, completed=false, repeat=false, replenish=false}) {
+    constructor({text, description, date=Date.now(), cost=1, completed=false, repeat=false, replenish=false, userId}) {
         if(!text) throw new Error('Please provide a text string.');
+        if(!userId) throw new Error('Please provide a user ID!');
         this.text = text;
         this.description = description;
         this.date = moment(date).unix();
@@ -9,7 +10,7 @@ module.exports = class Todo {
         this.completed = completed;
         this.repeat = repeat;
         this.replenish = replenish;
-        this.id = null;
+        this.userId = userId;
     }
 
     toString() {
@@ -19,7 +20,6 @@ module.exports = class Todo {
         `COST: ${this.cost}`, 
         `COMPLETED: ${this.completed}`, 
         `REPEAT: ${this.repeat}`, 
-        `REPLENISH: ${this.replenish}`,
-        `ID: ${this.id}`].join(',\n');
+        `REPLENISH: ${this.replenish}`].join('\n');
     }
 }
