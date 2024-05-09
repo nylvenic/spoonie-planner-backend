@@ -8,13 +8,27 @@ const authMiddleware = require('../utils/authMiddleware.js');
 
 router.use('/todos', authMiddleware);
 
-router.post('/todos/quick-create', async (req, res, next) => {
+router.post('/todos/create', async (req, res, next) => {
     try {
         const data = {
             userId: req.user.userId,
             ...req.body
         };
-        const result = await todoRepository.quickCreate(data);
+        const result = await todoRepository.create(data);
+        res.json(result);
+    } catch(err) {
+        next(err);
+    }
+});
+
+router.put('/todos/:id', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        const data = {
+            userId: req.user.userId,
+            ...req.body
+        };
+        const result = await todoRepository.update({data, id});
         res.json(result);
     } catch(err) {
         next(err);
@@ -49,6 +63,16 @@ router.delete('/todos/:id', async (req, res, next) => {
     try {
         const {id} = req.params;
         const result = await todoRepository.delete(id);
+        res.json(result);
+    } catch(err) {
+        next(err);
+    }
+});
+
+router.get('/todos/:id', async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        const result = await todoRepository.getById(id);
         res.json(result);
     } catch(err) {
         next(err);

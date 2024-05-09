@@ -38,7 +38,7 @@ module.exports = class UserRepository {
     async login(data) {
         try {
             const { username, password } = data;
-            const result = await this.findByUsername(username);
+            const result = await this.findBy({type: SEARCHTYPES.USERNAME, value: username});
             if (!result) {
                 return { msg: 'User not found.' };
             }

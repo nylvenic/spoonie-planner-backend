@@ -3,14 +3,78 @@ const Todo = require('../models/Todo.js');
 const CONSTANTS = require('../utils/constants.js');
 
 module.exports = class TodoRepository {
-    async quickCreate(data) {
-        const todo = new Todo(data);
-        await pool.query(`INSERT INTO ${CONSTANTS.TODO_TABLE} 
-        (text, date, cost, repeat_task, replenish, user_id) 
-        VALUES(?, ?, ?, ?, ?, ?);`,
-        [todo.text, todo.date, todo.cost, todo.repeat, todo.replenish, todo.userId]);
-        return {msg: 'Successfully added:' + todo.toString()}
+    async create(data) {
+        try {
+            let todo;
+            try {
+                todo = new Todo(data);
+            } catch (error) {
+                console.error(error);
+                return { error: error.message };
+            }
+    
+            const query = `INSERT INTO ${CONSTANTS.TODO_TABLE} 
+                           (text, date, cost, repeat_task, replenish, description, user_id) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?);`;
+    
+            const params = [todo.text, todo.date, todo.cost, todo.repeat, todo.replenish, todo.description, todo.userId];
+    
+            const result = await pool.query(query, params);
+    
+            // Assuming the database returns an auto-incremented ID
+            const insertedId = result.insertId;
+    
+            return { msg: 'Successfully added: ' + todo.toString(), id: insertedId };
+        } catch (error) {
+            console.error(error);
+            return { error: 'Something went wrong when creating the todo.' };
+        }
     }
+    
+    async getById(id) {
+        try {
+            const query = `SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE id = ?;`;
+            const result = await pool.query(query, [id]);
+    
+            // Assuming the first element is the required todo record
+            const data = result[0];
+    
+            if (data) {
+                return { msg: 'Successfully fetched todo.', todo: data };
+            } else {
+                return { msg: 'No todo with such id found.' };
+            }
+        } catch (error) {
+            console.error(error);
+            return { error: 'Something went wrong when fetching the todo by ID.' };
+        }
+    }    
+
+    async update({ data, id }) {
+        try {
+            let todo;
+            try {
+                todo = new Todo(data);
+            } catch (error) {
+                console.error(error);
+                return { error: error.message };
+            }
+    
+            const query = `UPDATE ${CONSTANTS.TODO_TABLE} 
+                           SET text = ?, date = ?, cost = ?, repeat_task = ?, replenish = ?, description = ?, user_id = ? 
+                           WHERE id = ?;`;
+    
+            const params = [todo.text, todo.date, todo.cost, todo.repeat, todo.replenish, todo.description, todo.userId, id];
+    
+            await pool.query(query, params);
+    
+            return { msg: 'Successfully updated: ' + todo.toString() };
+        } catch (error) {
+            console.error(error);
+            return { error: 'Something went wrong when updating the todo.' };
+        }
+    }
+    
 
     async setCompleted({id, newStatus}) {
         const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET completed=? WHERE id=?;`, [newStatus, id]);
