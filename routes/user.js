@@ -34,6 +34,18 @@ router.get('/users/:id/spoons', authMiddleware, async (req, res, next) => {
     }
 });
 
+router.put('/users/:id/spoons', authMiddleware, async (req, res, next) => {
+    const {id} = req.params;
+    const {replenish, cost, maxSpoons} = req.body;
+    try {
+        const result = await userRepository.changeSpoons({userId: id, cost, replenish, maxSpoons});
+        console.log(result);
+        res.send(result);
+    } catch(error) {
+        next(error);
+    }
+});
+
 router.use(errorHandler);
 
 module.exports = router;

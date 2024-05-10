@@ -81,18 +81,35 @@ module.exports = class UserRepository {
         }
     }
 
-    async changeSpoons({userId, cost, replenish}) {
+    async changeSpoons({userId, cost, replenish, maxSpoons}) {
         try {
             const userData = await this.findBy({type: SEARCHTYPES.ID, value: userId});
-            const newCurrentSpoons = replenish ? userData.current_spoons + cost : userData.current_spoons - cost;
+            if (!userData) {
+                return {error: `User with ID ${userId} not found.`};
+            }
+
+            const currentSpoons = userData.user.current_spoons;
+            let newCurrentSpoons = replenish ? currentSpoons + cost : currentSpoons - cost;
+            
+            // Prevent negative spoon count
+            if (newCurrentSpoons < 0) {
+                newCurrentSpoons = 0;
+            }
+
+            // prevent spoon overload
+            if(newCurrentSpoons > maxSpoons) {
+                newCurrentSpoons = maxSpoons;
+            }
+    
             const result = await pool.query(`UPDATE users SET current_spoons = ? WHERE id = ?`, [newCurrentSpoons, userId]);
             console.log(result);
-            return {msg: `Successfully changed the spoons of ${userId}. New spoons: ${newCurrentSpoons}`};
-        } catch(error) {
+    
+            return {msg: `Successfully changed the spoons of ${userId}.`, newSpoons: newCurrentSpoons};
+        } catch (error) {
             console.error(error);
             return {error: 'Failed to update spoons.'};
         }
-    }
+    }    
 
     async getSpoons(userId) {
         try {
