@@ -83,14 +83,14 @@ module.exports = class TodoRepository {
     }
 
     async markForDeletion({id, newStatus}) {
-        const [row, fields] = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET deleted=? WHERE id=?;`, [newStatus, id]);
-        console.log(row, fields);
-        return {msg: `Successfully updated todo.`};
+        const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET deleted=? WHERE id=?;`, [newStatus, id]);
+        console.log(result);
+        return {msg: `Successfully marked for deletion.`};
     }
 
     async deleteTodo(id) {
-        const [row, fields] = await pool.query(`DELETE FROM ${CONSTANTS.TODO_TABLE} WHERE id=?;`, [id]);
-        console.log(row, fields);
+        const result = await pool.query(`DELETE FROM ${CONSTANTS.TODO_TABLE} WHERE id=?;`, [id]);
+        console.log(result);
         return {msg: `Successfully deleted todo.`};
     }
 

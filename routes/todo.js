@@ -62,7 +62,7 @@ router.put('/todos/:id/markForDeletion', async (req, res, next) => {
 router.delete('/todos/:id', async (req, res, next) => {
     try {
         const {id} = req.params;
-        const result = await todoRepository.delete(id);
+        const result = await todoRepository.deleteTodo(id);
         res.json(result);
     } catch(err) {
         next(err);
