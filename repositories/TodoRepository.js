@@ -104,6 +104,23 @@ module.exports = class TodoRepository {
         }
     }
 
+    async getDailyTodos(userId) {
+        // Get the start and end of the current day in UNIX timestamp format
+        const startOfDay = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+        const endOfDay = Math.floor(new Date().setHours(23, 59, 59, 999) / 1000);
+    
+        // Query the database to fetch todos within the start and end of the day
+        const result = await pool.query(`SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE completed=FALSE AND deleted=FALSE AND user_id=? AND date >= ? AND date <= ?;`, [userId, startOfDay, endOfDay]);
+        const data = result[0];
+        
+        if (data) {
+            return { msg: 'Successfully fetched daily todos.', todos: data };
+        } else {
+            return { msg: 'No todos found for today.' };
+        }
+    }
+    
+
     async getAllDeleted(userId) {
         const result = await pool.query(`SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE deleted=TRUE AND user_id=?;`, [userId]);
         const data = result[0];
@@ -125,12 +142,14 @@ module.exports = class TodoRepository {
     }
 
     async getByStatus({status, userId}) {
-        if(status == 'deleted') {
+        if (status === 'deleted') {
             return this.getAllDeleted(userId);
-        } else if(status == 'completed') {
+        } else if (status === 'completed') {
             return this.getAllCompleted(userId);
+        } else if (status === 'today') {
+            return this.getDailyTodos(userId);
         } else {
             return this.getAll(userId);
         }
-    }
+    }    
 }
