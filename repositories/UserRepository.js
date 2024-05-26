@@ -1,13 +1,22 @@
 const User = require("../models/User.js");
 const pool = require('../utils/database.js');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const createToken = require('../utils/createToken.js');
+const CONSTANTS = require('../utils/CONSTANTS.js');
 const saltRounds = 10;
 const SEARCHTYPES = {
     USERNAME: 'username',
     EMAIL: 'email',
     ID: 'id',
 }
+
+function resHandling({msg, success}) {
+    return {
+        msg,
+        success: success
+    }
+}
+
 module.exports = class UserRepository {
     async create(data) {
         try {
@@ -15,23 +24,23 @@ module.exports = class UserRepository {
             try {
                 user = new User({username: data.username, password: data.password, email: data.email});
             } catch(error) {
-                return {error: error.message}
+                return {msg: error.message, success: false}
             }
             const foundUsername = await this.findBy({type: SEARCHTYPES.USERNAME, value: data.username});
             if(foundUsername) {
-                return {error: 'This username already exists.'};
+                return resHandling(CONSTANTS.RESPONSES.USER.CREATE.USER_EXISTS);
             }
             const foundEmail = await this.findBy({type: SEARCHTYPES.EMAIL, value: data.email});
             if(foundEmail) {
-                return {error: 'This email already exists.'};
+                return resHandling(CONSTANTS.RESPONSES.USER.CREATE.EMAIL_EXISTS);
             }
             const hash = await bcrypt.hash(user.password, saltRounds);
             await pool.query(`INSERT INTO users (username, password, email, nickname) VALUES (?, ?, ?, ?);`, 
                 [user.username, hash, user.email, user.username]);
-            return {msg: 'Successfully created user.'};
+            return resHandling(CONSTANTS.RESPONSES.USER.CREATE.SUCCESS);
         } catch (error) {
             console.error(error);
-            return {error:'Something went wrong when creating user.'}
+            return resHandling(CONSTANTS.RESPONSES.USER.CREATE.GENERIC_ERROR);
         }
     }
 
@@ -40,52 +49,41 @@ module.exports = class UserRepository {
             const { username, password } = data;
             const result = await this.findBy({type: SEARCHTYPES.USERNAME, value: username});
             if (!result) {
-                return { msg: 'User not found.' };
+                return resHandling(CONSTANTS.RESPONSES.GENERIC.USER_NOT_FOUND);
             }
             const user = result.user;
             const hash = user.password;
     
             const passwordMatch = await bcrypt.compare(password, hash);
             if (passwordMatch) {
-                const token = jwt.sign({
-                    userId: user.id,
-                    signedIn: true,
-                    username: user.username,
-                    maxSpoons: user.max_spoons,
-                    spoonCarryOver: user.spoon_carry_over,
-                    avatar: user.avatar
-                }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '3d' });
-    
-                return { msg: 'Successful authentication.', token };
+                const token = createToken(user);
+                return { ...resHandling(CONSTANTS.RESPONSES.USER.LOGIN.SUCCESS), token };
             } else {
-                return { msg: 'Invalid password.' };
+                return resHandling(CONSTANTS.RESPONSES.USER.LOGIN.WRONG_PASSWORD);
             }
         } catch (error) {
             console.error(error);
-            return { error: 'Something went wrong when logging in.' };
+            return resHandling(CONSTANTS.RESPONSES.USER.LOGIN.GENERIC_ERROR);
         }
     }
     
     async findBy({type, value}) {
-        try {
-            const result = await pool.query(`SELECT * FROM users WHERE ${type} = ?;`, [value]);
-            const data = result[0][0];
-            if(data) {
-                console.log(data);
-                return {msg: `Successfully retrieved user by ${type}.`, user: data};
-            } else {
-                return false;
-            }
-        } catch(error) {
-            console.error(error);
+        const validColumns = [SEARCHTYPES.USERNAME, SEARCHTYPES.EMAIL, SEARCHTYPES.ID];
+        if (!validColumns.includes(type)) {
+            throw new Error('Invalid search type');
         }
-    }
+        const result = await pool.query(`SELECT * FROM users WHERE ${type} = ?`, [value]);
+        if (!result[0] || result[0].length === 0) {
+            return false;
+        }
+        return { user: result[0][0] };
+    }    
 
     async changeSpoons({userId, cost, replenish, maxSpoons}) {
         try {
             const userData = await this.findBy({type: SEARCHTYPES.ID, value: userId});
             if (!userData) {
-                return {error: `User with ID ${userId} not found.`};
+                return CONSTANTS.RESPONSES.GENERIC.USER_NOT_FOUND
             }
 
             const currentSpoons = userData.user.current_spoons;
@@ -104,20 +102,106 @@ module.exports = class UserRepository {
             const result = await pool.query(`UPDATE users SET current_spoons = ? WHERE id = ?`, [newCurrentSpoons, userId]);
             console.log(result);
     
-            return {msg: `Successfully changed the spoons of ${userId}.`, newSpoons: newCurrentSpoons};
+            const successResponse = CONSTANTS.RESPONSES.USER.SPOONS_CHANGE.SUCCESS(userId);
+            return {...resHandling(successResponse), newSpoons: newCurrentSpoons};
         } catch (error) {
             console.error(error);
-            return {error: 'Failed to update spoons.'};
+            return resHandling(CONSTANTS.RESPONSES.USER.SPOONS_CHANGE.GENERIC_ERROR);
         }
     }    
 
     async getSpoons(userId) {
         try {
             const result = await pool.query(`SELECT max_spoons, current_spoons FROM users WHERE id = ?`, [userId]);
-            return {msg: `Successfully obtained spoons for ${userId}.`, result: result[0][0]};
+            const successResponse = CONSTANTS.RESPONSES.USER.SPOONS_GET.SUCCESS(userId);
+            return {...resHandling(successResponse), result: result[0][0]};
         } catch(error) {
             console.error(error);
-            return {error: 'Failed to update spoons.'};
+            return resHandling(CONSTANTS.RESPONSES.USER.SPOONS_GET.GENERIC_ERROR);
+        }
+    }
+
+    async changePassword({userId, newPassword, oldPassword}) {
+        try {
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            const hash = user.password;
+            const passwordMatch = await bcrypt.compare(oldPassword, hash);
+            if (passwordMatch) {
+                const newHash = await bcrypt.hash(newPassword, saltRounds);
+                await pool.query(`UPDATE users SET password = ? WHERE id = ?`, [newHash, user.id]);
+                return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.SUCCESS;
+            } else {
+                return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.WRONG_PASSWORD;
+            }
+        } catch(error) {
+            console.error(error);
+            return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.GENERIC_ERROR;
+        }
+    }
+
+    async changeMaxSpoons({userId, newMaxSpoons}) {
+        try {
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            await pool.query(`UPDATE users SET max_spoons = ? WHERE id = ?`, [newMaxSpoons, user.id]);
+            const updatedUser = { ...user, max_spoons: newMaxSpoons};
+            const token = createToken(updatedUser);
+            return { ...resHandling(CONSTANTS.RESPONSES.USER.CHANGE_MAX_SPOONS.SUCCESS), token };
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.USER.CHANGE_MAX_SPOONS.GENERIC_ERROR);
+        }
+    }
+
+    async changeAvatar({userId, filename}) {
+        try {
+            const fullFilename = `/avatars/${filename}`;
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            await pool.query(`UPDATE users SET avatar = ? WHERE id = ?`, [fullFilename, user.id]);
+            const updatedUser = { ...user, avatar: fullFilename};
+            const token = createToken(updatedUser);
+            return { ...resHandling(CONSTANTS.RESPONSES.USER.AVATAR_CHANGE.SUCCESS), token };
+        } catch(error) {
+            console.error('Error changing avatar', error);
+            return resHandling(CONSTANTS.RESPONSES.USER.AVATAR_CHANGE.GENERIC_ERROR);
+        }
+    }
+
+    async changeNickname({userId, newNickname}) {
+        try {
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            await pool.query(`UPDATE users SET nickname = ? WHERE id = ?`, [newNickname, user.id]);
+            const updatedUser = { ...user, nickname: newNickname};
+            const token = createToken(updatedUser);
+            return { ...resHandling(CONSTANTS.RESPONSES.USER.NICKNAME_CHANGE.SUCCESS), token };
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.USER.NICKNAME_CHANGE.GENERIC_ERROR);
+        }
+    }
+
+    async changeBrowserReminders({userId, reminders}) {
+        const {onTimeReminder, minuteReminder5, minuteReminder30, hourReminder1, dayReminder1} = reminders;
+        try {
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            await pool.query(`UPDATE users 
+            SET on_time_reminder = ?, 
+            5_min_reminder = ?,
+            30_min_reminder = ?,
+            1_hour_reminder = ?,
+            1_day_reminder = ? 
+            WHERE id = ?`, [onTimeReminder, minuteReminder5, minuteReminder30, hourReminder1, dayReminder1, user.id]);
+            const updatedUser = { ...user, 
+                "on_time_reminder": onTimeReminder,
+                "5_min_reminder": minuteReminder5,
+                "30_min_reminder": minuteReminder30,
+                "1_hour_reminder": hourReminder1,
+                "1_day_reminder": dayReminder1,
+            };
+            const token = createToken(updatedUser);
+            return { ...resHandling(CONSTANTS.RESPONSES.USER.REMINDERS_CHANGE.SUCCESS), token };
+        } catch(error) {
+            console.error('Error changing reminders', error);
+            return resHandling(CONSTANTS.RESPONSES.USER.REMINDERS_CHANGE.GENERIC_ERROR);
         }
     }
 };

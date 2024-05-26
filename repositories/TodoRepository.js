@@ -1,6 +1,6 @@
 const pool = require('../utils/database.js');
 const Todo = require('../models/Todo.js');
-const CONSTANTS = require('../utils/constants.js');
+const CONSTANTS = require('../utils/CONSTANTS.js');
 
 module.exports = class TodoRepository {
     async create(data) {
