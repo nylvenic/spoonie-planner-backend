@@ -147,6 +147,10 @@ module.exports = {
             'ALL': {
                 msg: 'An unexpected error has occurred.',
                 success: false
+            },
+            'PAGE_NOT_FOUND': {
+                msg: "Sorry, can't find that!",
+                success: false,
             }
         }
     }
