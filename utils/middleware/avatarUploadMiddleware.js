@@ -1,6 +1,6 @@
 const multer = require("multer");
 const path = require('path');
-const CONSTANTS = require('../CONSTANTS.js');
+const CONSTANTS = require('../constants.js');
 // Define the upload middleware with error handling
 function uploadMiddleware(req, res, next) {
     const storage = multer.diskStorage({

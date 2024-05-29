@@ -1,4 +1,4 @@
-const CONSTANTS = require("./CONSTANTS.js");
+const CONSTANTS = require("./constants.js");
 
 module.exports = function errorHandler(err, req, res, next) {
     console.error(err); // Log the error for debugging purposes

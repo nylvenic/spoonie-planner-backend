@@ -5,7 +5,7 @@ const userRoutes = require('./routes/user.js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const cors = require('cors');
-const CONSTANTS = require('./utils/CONSTANTS.js');
+const CONSTANTS = require('./utils/constants.js');
 app.use(cors())
 app.use(express.static('public'));
 app.use(express.json({limit:'50mb'}));

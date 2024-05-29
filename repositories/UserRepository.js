@@ -2,7 +2,7 @@ const User = require("../models/User.js");
 const pool = require('../utils/database.js');
 const bcrypt = require('bcrypt');
 const createToken = require('../utils/createToken.js');
-const CONSTANTS = require('../utils/CONSTANTS.js');
+const CONSTANTS = require('../utils/constants.js');
 const passwordValidation = require("../utils/validation/passwordValidation.js");
 const Joi = require("joi");
 const nicknameValidation = require("../utils/validation/nicknameValidation.js");
@@ -13,7 +13,6 @@ const SEARCHTYPES = {
     EMAIL: 'email',
     ID: 'id',
 }
-const moment = require('moment');
 const fs = require('fs/promises');
 
 function resHandling({msg, success}) {
