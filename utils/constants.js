@@ -1,5 +1,6 @@
 module.exports = {
     TODO_TABLE: 'todos',
+    MAX_FILESIZE: 524288,
     RESPONSES: {
         USER: {
             CREATE: {
@@ -13,7 +14,7 @@ module.exports = {
                 },
                 'SUCCESS': {
                     msg: 'Successfully created user. Navigating you to login page...',
-                    success: false
+                    success: true
                 },
                 'GENERIC_ERROR': {
                     msg: 'Something went wrong when creating user.',
@@ -104,11 +105,39 @@ module.exports = {
                     msg: 'Avatar changed successfully.',
                     success: true,
                 },
+                'FILE_TOO_BIG': {
+                    msg: 'File is too big, max 512KB',
+                    success: false,
+                },
+                'INVALID_FILE_TYPE': {
+                    msg: 'Invalid file type, must be JPEG, JPG, PNG or GIF',
+                    success: false,
+                },
                 'GENERIC_ERROR': {
                     msg: 'Failed to change avatar value due to internal error.',
                     success: false,
                 },
-            }
+            },
+            CHANGE_LAST_VISITED: {
+                'SUCCESS': {
+                    msg: 'Successfully changed last visited date.',
+                    success: true,
+                },
+                'GENERIC_ERROR': {
+                    msg: 'Failed to change last visited value due to internal error.',
+                    success: false,
+                },
+            },
+            GET_LAST_VISITED: {
+                'SUCCESS': {
+                    msg: 'Successfully retrieved last visited date.',
+                    success: true,
+                },
+                'GENERIC_ERROR': {
+                    msg: 'Failed to retrieve last visited value due to internal error.',
+                    success: false,
+                },
+            },
         },
         GENERIC: {
             'USER_NOT_FOUND': {

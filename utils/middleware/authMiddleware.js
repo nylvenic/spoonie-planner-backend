@@ -11,6 +11,12 @@ module.exports = (req, res, next) => {
         if (err) {
             return res.status(403).json({ error: 'Failed to authenticate token.' });
         }
+        
+        const userIdFromParams = req.params.userId || req.params.id;
+        if (userIdFromParams.toString() !== decoded.userId.toString()) {
+            return res.status(403).json({ error: 'Unauthorized to access this resource.' });
+        }
+        
         req.user = decoded; // Assuming the decoded token includes user information
         next();
     });

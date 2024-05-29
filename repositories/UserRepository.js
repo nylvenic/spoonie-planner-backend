@@ -3,12 +3,18 @@ const pool = require('../utils/database.js');
 const bcrypt = require('bcrypt');
 const createToken = require('../utils/createToken.js');
 const CONSTANTS = require('../utils/CONSTANTS.js');
+const passwordValidation = require("../utils/validation/passwordValidation.js");
+const Joi = require("joi");
+const nicknameValidation = require("../utils/validation/nicknameValidation.js");
+const spoonValidation = require("../utils/validation/spoonValidation.js");
 const saltRounds = 10;
 const SEARCHTYPES = {
     USERNAME: 'username',
     EMAIL: 'email',
     ID: 'id',
 }
+const moment = require('moment');
+const fs = require('fs/promises');
 
 function resHandling({msg, success}) {
     return {
@@ -99,6 +105,7 @@ module.exports = class UserRepository {
                 newCurrentSpoons = maxSpoons;
             }
     
+            console.log(newCurrentSpoons, userId);
             const result = await pool.query(`UPDATE users SET current_spoons = ? WHERE id = ?`, [newCurrentSpoons, userId]);
             console.log(result);
     
@@ -123,24 +130,42 @@ module.exports = class UserRepository {
 
     async changePassword({userId, newPassword, oldPassword}) {
         try {
+            const schema = Joi.object({
+                password: passwordValidation
+            });
+            const {error, value} = schema.validate({password: newPassword}, {abortEarly: false});
+            const {password} = value;
+            if(error) {
+                const msg = error.details[0].message;
+                return resHandling({msg, success: false});
+            }
             const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
             const hash = user.password;
             const passwordMatch = await bcrypt.compare(oldPassword, hash);
             if (passwordMatch) {
-                const newHash = await bcrypt.hash(newPassword, saltRounds);
+                const newHash = await bcrypt.hash(password, saltRounds);
                 await pool.query(`UPDATE users SET password = ? WHERE id = ?`, [newHash, user.id]);
-                return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.SUCCESS;
+                return resHandling(CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.SUCCESS);
             } else {
-                return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.WRONG_PASSWORD;
+                return resHandling(CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.WRONG_PASSWORD);
             }
         } catch(error) {
             console.error(error);
-            return CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.GENERIC_ERROR;
+            return resHandling(CONSTANTS.RESPONSES.USER.PASSWORD_CHANGE.GENERIC_ERROR);
         }
     }
 
     async changeMaxSpoons({userId, newMaxSpoons}) {
         try {
+            const schema = Joi.object({
+                maxSpoons: spoonValidation('New Max Spoons')
+            });
+            const {error, value} = schema.validate({maxSpoons: newMaxSpoons}, {abortEarly: false});
+            const {maxSpoons} = value;
+            if(error) {
+                const msg = error.details[0].message;
+                return resHandling({msg, success: false});
+            }
             const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
             await pool.query(`UPDATE users SET max_spoons = ? WHERE id = ?`, [newMaxSpoons, user.id]);
             const updatedUser = { ...user, max_spoons: newMaxSpoons};
@@ -152,8 +177,13 @@ module.exports = class UserRepository {
         }
     }
 
-    async changeAvatar({userId, filename}) {
+    async changeAvatar({userId, filename, previousAvatar}) {
         try {
+            if (previousAvatar !== "/avatars/default.jpg") {
+                const previousFilePath = `./public${previousAvatar}`; // Adjust the path as needed based on your server setup
+                await fs.unlink(previousFilePath)
+                      .catch(err => console.error('Failed to delete the previous avatar:', err));
+            }
             const fullFilename = `/avatars/${filename}`;
             const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
             await pool.query(`UPDATE users SET avatar = ? WHERE id = ?`, [fullFilename, user.id]);
@@ -168,14 +198,47 @@ module.exports = class UserRepository {
 
     async changeNickname({userId, newNickname}) {
         try {
+            const schema = Joi.object({
+                nickname: nicknameValidation
+            });
+            const {error, value} = schema.validate({nickname: newNickname}, {abortEarly: false});
+            const {nickname} = value;
+            if(error) {
+                const msg = error.details[0].message;
+                return resHandling({msg, success: false});
+            }
             const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
-            await pool.query(`UPDATE users SET nickname = ? WHERE id = ?`, [newNickname, user.id]);
-            const updatedUser = { ...user, nickname: newNickname};
+            await pool.query(`UPDATE users SET nickname = ? WHERE id = ?`, [nickname, user.id]);
+            const updatedUser = { ...user, nickname};
             const token = createToken(updatedUser);
             return { ...resHandling(CONSTANTS.RESPONSES.USER.NICKNAME_CHANGE.SUCCESS), token };
         } catch(error) {
             console.error(error);
             return resHandling(CONSTANTS.RESPONSES.USER.NICKNAME_CHANGE.GENERIC_ERROR);
+        }
+    }
+
+    async changeLastVisited({userId, newDate}) {
+        try {
+            const {user} = await this.findBy({type: SEARCHTYPES.ID, value: userId});
+            if(!user) return resHandling(CONSTANTS.RESPONSES.GENERIC.USER_NOT_FOUND);
+            await pool.query(`UPDATE users SET last_visited = ? WHERE id = ?`, [newDate, user.id]);
+            const token = createToken({...user, last_visited: newDate})
+            return { ...resHandling(CONSTANTS.RESPONSES.USER.CHANGE_LAST_VISITED.SUCCESS), token } 
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.USER.CHANGE_LAST_VISITED.GENERIC_ERROR);
+        }
+    }
+
+    async getLastVisited({userId}) {
+        try {
+            const result = await pool.query(`SELECT last_visited FROM users WHERE id = ?`, [userId]);
+            const successResponse = CONSTANTS.RESPONSES.USER.GET_LAST_VISITED.SUCCESS;
+            return {...resHandling(successResponse), result: result[0][0]};
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.USER.GET_LAST_VISITED.GENERIC_ERROR);
         }
     }
 

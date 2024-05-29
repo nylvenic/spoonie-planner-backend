@@ -1,4 +1,6 @@
 const Joi = require('joi');
+const passwordValidation = require('../utils/validation/passwordValidation.js');
+const usernameValidation = require('../utils/validation/usernameValidation.js');
 
 module.exports = class User {
     constructor({ username, password, email }) {
@@ -26,23 +28,8 @@ module.exports = class User {
     // Validate user input using Joi schema
     validateUser(data) {
         const schema = Joi.object({
-            username: Joi.string()
-                .alphanum()
-                .min(4)
-                .required()
-                .messages({
-                    'string.base': `"username" should be a type of 'text'`,
-                    'string.empty': `"username" cannot be an empty field`,
-                    'string.min': `"username" should have a minimum length of {#limit}`,
-                    'any.required': `"username" is a required field`
-                }),
-            password: Joi.string()
-                .pattern(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/)
-                .required()
-                .messages({
-                    'string.pattern.base': `"password" should contain at least one number, one letter and one special character and should be at least 8 characters long.`,
-                    'any.required': `"password" is a required field`
-                }),
+            username: usernameValidation,
+            password: passwordValidation,
             email: Joi.string()
                 .email({ minDomainSegments: 2 })
                 .required()

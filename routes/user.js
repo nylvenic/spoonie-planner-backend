@@ -1,22 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const UserRepository = require('../repositories/UserRepository');
-const path = require('path');
 
 const userRepository = new UserRepository();
-const authMiddleware = require('../utils/authMiddleware.js');
+const authMiddleware = require('../utils/middleware/authMiddleware.js');
 const errorHandler = require('../utils/errorHandler.js');
-const storage = multer.diskStorage({
-    destination: 'public/avatars', // set the destination
-    filename: function (req, file, cb) {
-        // Create a unique filename with the original extension
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const extension = path.extname(file.originalname); // Get the extension from the original file name
-        cb(null, uniqueSuffix + extension); // Append the extension
-    }
-});
-const upload = multer({ storage: storage });
+const avatarUploadMiddleware = require('../utils/middleware/avatarUploadMiddleware.js');
 
 router.post('/users/create', async (req, res, next) => {
     try {
@@ -33,6 +22,27 @@ router.post('/users/login', async (req, res, next) => {
         res.send(result)
     } catch(error) {
         next(error)
+    }
+});
+
+router.get('/users/:id/last-visited', authMiddleware, async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        const result = await userRepository.getLastVisited({userId:id});
+        res.send(result);
+    } catch(error) {
+        next(error);
+    }
+});
+
+router.put('/users/:id/last-visited', authMiddleware, async (req, res, next) => {
+    const {id} = req.params;
+    const {newDate} = req.body;
+    try {
+        const result = await userRepository.changeLastVisited({userId: id, newDate});
+        res.send(result);
+    } catch(error) {
+        next(error);
     }
 });
 
@@ -68,18 +78,19 @@ router.put('/users/:id/max-spoons', authMiddleware, async (req, res, next) => {
         next(error);
     }
 });
-router.put('/users/:id/avatar', upload.single('file'), async (req, res, next) => {
+router.put('/users/:id/avatar', avatarUploadMiddleware, authMiddleware, async (req, res, next) => {
     const {id} = req.params;
     const file = req.file;
+    const {previousAvatar} = req.body;
     try {
         console.log(file);
-        const result = await userRepository.changeAvatar({userId: id, filename: file.filename});
+        const result = await userRepository.changeAvatar({userId: id, filename: file.filename, previousAvatar});
         res.send(result);
     } catch(error) {
         next(error);
     }
 });
-router.put('/users/:id/browser-reminder', async (req, res, next) => {
+router.put('/users/:id/browser-reminder', authMiddleware, async (req, res, next) => {
     const {id} = req.params;
     const {reminders} = req.body;
     try {
@@ -89,7 +100,7 @@ router.put('/users/:id/browser-reminder', async (req, res, next) => {
         next(error);
     }
 });
-router.put('/users/:id/nickname', async (req, res, next) => {
+router.put('/users/:id/nickname', authMiddleware, async (req, res, next) => {
     const {id} = req.params;
     const {newNickname} = req.body;
     try {
@@ -99,7 +110,7 @@ router.put('/users/:id/nickname', async (req, res, next) => {
         next(error);
     }
 });
-router.put('/users/:id/password', async (req, res, next) => {
+router.put('/users/:id/password', authMiddleware, async (req, res, next) => {
     const {id} = req.params;
     const {newPassword, oldPassword} = req.body;
     try {

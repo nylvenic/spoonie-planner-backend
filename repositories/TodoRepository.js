@@ -74,7 +74,6 @@ module.exports = class TodoRepository {
             return { error: 'Something went wrong when updating the todo.' };
         }
     }
-    
 
     async setCompleted({id, newStatus}) {
         const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET completed=? WHERE id=?;`, [newStatus, id]);
@@ -101,6 +100,22 @@ module.exports = class TodoRepository {
             return {msg: 'Successfully fetched all todos.', todos: data}
         } else {
             return {msg: 'No todos found.'};
+        }
+    }
+
+    async setRemindedState({id, reminders}) {
+        const {onTimeReminder, minuteReminder5, minuteReminder30, hourReminder1, dayReminder1} = reminders;
+        try {
+            await pool.query(`UPDATE todos 
+                SET on_time_reminder = ?, 
+                5_min_reminder = ?,
+                30_min_reminder = ?,
+                1_hour_reminder = ?,
+                1_day_reminder = ? 
+                WHERE id = ?`, [onTimeReminder, minuteReminder5, minuteReminder30, hourReminder1, dayReminder1, id]);
+            return {msg: 'Successfully updated Todo reminded state', success: true};
+        } catch(error) {
+            return {msg: 'Unable to set Todo reminded state.', success: false};
         }
     }
 

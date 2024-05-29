@@ -4,11 +4,11 @@ const errorHandler = require('../utils/errorHandler.js');
 const TodoRepository = require('../repositories/TodoRepository.js');
 const todoRepository = new TodoRepository();
 const jwt = require('jsonwebtoken');
-const authMiddleware = require('../utils/authMiddleware.js');
+const authMiddleware = require('../utils/middleware/authMiddleware.js');
 
-router.use('/todos', authMiddleware);
+router.use('/users/:userId/todos', authMiddleware);
 
-router.post('/todos/create', async (req, res, next) => {
+router.post('/users/:userId/todos/create', authMiddleware, async (req, res, next) => {
     try {
         const data = {
             userId: req.user.userId,
@@ -21,7 +21,7 @@ router.post('/todos/create', async (req, res, next) => {
     }
 });
 
-router.put('/todos/:id', async (req, res, next) => {
+router.put('/users/:userId/todos/:id', authMiddleware, async (req, res, next) => {
     try {
         const {id} = req.params;
         const data = {
@@ -35,7 +35,7 @@ router.put('/todos/:id', async (req, res, next) => {
     }
 });
 
-router.put('/todos/:id/complete', async (req, res, next) => {
+router.put('/users/:userId/todos/:id/complete', authMiddleware, async (req, res, next) => {
     try {
         const {id} = req.params;
         const {newStatus} = req.body;
@@ -47,7 +47,7 @@ router.put('/todos/:id/complete', async (req, res, next) => {
     }
 });
 
-router.put('/todos/:id/markForDeletion', async (req, res, next) => {
+router.put('/users/:userId/todos/:id/markForDeletion', authMiddleware, async (req, res, next) => {
     try {
         const {id} = req.params;
         const {newStatus} = req.body;
@@ -59,7 +59,19 @@ router.put('/todos/:id/markForDeletion', async (req, res, next) => {
     }
 });
 
-router.delete('/todos/:id', async (req, res, next) => {
+router.put('/users/:userId/todos/:id/set-reminded-state', authMiddleware, async (req, res, next) => {
+    try {
+        const {id} = req.params;
+        const {reminders} = req.body;
+        console.log(reminders);
+        const result = await todoRepository.setRemindedState({id, reminders});
+        res.json(result);
+    } catch(err) {
+        next(err);
+    }
+});
+
+router.delete('/users/:userId/todos/:id', authMiddleware, async (req, res, next) => {
     try {
         const {id} = req.params;
         const result = await todoRepository.deleteTodo(id);
@@ -69,7 +81,7 @@ router.delete('/todos/:id', async (req, res, next) => {
     }
 });
 
-router.get('/todos/:id', async (req, res, next) => {
+router.get('/users/:userId/todos/:id', authMiddleware, async (req, res, next) => {
     try {
         const {id} = req.params;
         const result = await todoRepository.getById(id);
@@ -79,7 +91,7 @@ router.get('/todos/:id', async (req, res, next) => {
     }
 });
 
-router.get('/todos', async (req, res, next) => {
+router.get('/users/:userId/todos', authMiddleware, async (req, res, next) => {
     const {status} = req.query;
     const {userId} = req.user;
     try {
