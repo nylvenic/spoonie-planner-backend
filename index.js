@@ -6,7 +6,21 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const cors = require('cors');
 const CONSTANTS = require('./utils/constants.js');
-app.use(cors())
+// Define the options for CORS
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Add logic to allow specific origins or allow all if needed
+        const allowedOrigins = ['http://localhost:3000', 'http://api.spoonietodo.com', 'http://spoonietodo.com'];
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+        } else {
+        callback(new Error('Not allowed by CORS'));
+        }
+    },
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+// Use CORS with options
+app.use(cors(corsOptions));
 app.use(express.static('public'));
 app.use(express.json({limit:'50mb'}));
 app.use(express.urlencoded({extended: false}));
