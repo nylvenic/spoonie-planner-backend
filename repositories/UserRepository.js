@@ -14,13 +14,7 @@ const SEARCHTYPES = {
     ID: 'id',
 }
 const fs = require('fs/promises');
-
-function resHandling({msg, success}) {
-    return {
-        msg,
-        success: success
-    }
-}
+const resHandling = require('../utils/resHandling.js');
 
 module.exports = class UserRepository {
     async create(data) {

@@ -1,6 +1,7 @@
 const pool = require('../utils/database.js');
 const Todo = require('../models/Todo.js');
 const CONSTANTS = require('../utils/constants.js');
+const resHandling = require('../utils/resHandling.js');
 
 module.exports = class TodoRepository {
     async create(data) {
@@ -10,7 +11,7 @@ module.exports = class TodoRepository {
                 todo = new Todo(data);
             } catch (error) {
                 console.error(error);
-                return { error: error.message };
+                return resHandling(CONSTANTS.RESPONSES.TODO.CREATE.VALIDATION(error.message));
             }
     
             const query = `INSERT INTO ${CONSTANTS.TODO_TABLE} 
@@ -24,10 +25,10 @@ module.exports = class TodoRepository {
             // Assuming the database returns an auto-incremented ID
             const insertedId = result.insertId;
     
-            return { msg: 'Successfully added: ' + todo.toString(), id: insertedId };
+            return { ...resHandling(CONSTANTS.RESPONSES.TODO.CREATE.SUCCESS), id: insertedId };
         } catch (error) {
             console.error(error);
-            return { error: 'Something went wrong when creating the todo.' };
+            return resHandling(CONSTANTS.RESPONSES.TODO.CREATE.GENERIC_ERROR);
         }
     }
     
@@ -40,13 +41,13 @@ module.exports = class TodoRepository {
             const data = result[0];
     
             if (data) {
-                return { msg: 'Successfully fetched todo.', todo: data };
+                return { ...resHandling(CONSTANTS.RESPONSES.TODO.GET_BY_ID.SUCCESS), todo: data };
             } else {
-                return { msg: 'No todo with such id found.' };
+                return resHandling(CONSTANTS.RESPONSES.TODO.GET_BY_ID.TODO_NOT_FOUND);
             }
         } catch (error) {
             console.error(error);
-            return { error: 'Something went wrong when fetching the todo by ID.' };
+            return resHandling(CONSTANTS.RESPONSES.TODO.GET_BY_ID.GENERIC_ERROR);
         }
     }    
 
@@ -68,38 +69,53 @@ module.exports = class TodoRepository {
     
             await pool.query(query, params);
     
-            return { msg: 'Successfully updated: ' + todo.toString() };
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.SUCCESS);
         } catch (error) {
             console.error(error);
-            return { error: 'Something went wrong when updating the todo.' };
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.GENERIC_ERROR);
         }
     }
 
     async setCompleted({id, newStatus}) {
-        const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET completed=? WHERE id=?;`, [newStatus, id]);
-        console.log(result);
-        return {msg: `Successfully updated todo.`};
+        try {
+            const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET completed=? WHERE id=?;`, [newStatus, id]);
+            console.log(result);
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.SUCCESS);
+        } catch (error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.GENERIC_ERROR);
+        }
     }
 
     async markForDeletion({id, newStatus}) {
-        const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET deleted=? WHERE id=?;`, [newStatus, id]);
-        console.log(result);
-        return {msg: `Successfully marked for deletion.`};
+        try {
+            const result = await pool.query(`UPDATE ${CONSTANTS.TODO_TABLE} SET deleted=? WHERE id=?;`, [newStatus, id]);
+            console.log(result);
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.SUCCESS);
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.GENERIC_ERROR);
+        }
     }
 
     async deleteTodo(id) {
-        const result = await pool.query(`DELETE FROM ${CONSTANTS.TODO_TABLE} WHERE id=?;`, [id]);
-        console.log(result);
-        return {msg: `Successfully deleted todo.`};
+        try {
+            const result = await pool.query(`DELETE FROM ${CONSTANTS.TODO_TABLE} WHERE id=?;`, [id]);
+            console.log(result);
+            return resHandling(CONSTANTS.RESPONSES.TODO.DELETE.SUCCESS);
+        } catch(error) {
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.TODO.DELETE.GENERIC_ERROR);
+        }
     }
 
     async getAll(userId) {
         const result = await pool.query(`SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE completed=FALSE AND deleted=FALSE AND user_id=?;`, [userId]);
         const data = result[0];
         if(data) {
-            return {msg: 'Successfully fetched all todos.', todos: data}
+            return {...resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('inbox')), todos: data}
         } else {
-            return {msg: 'No todos found.'};
+            return resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('inbox'));
         }
     }
 
@@ -113,9 +129,10 @@ module.exports = class TodoRepository {
                 1_hour_reminder = ?,
                 1_day_reminder = ? 
                 WHERE id = ?`, [onTimeReminder, minuteReminder5, minuteReminder30, hourReminder1, dayReminder1, id]);
-            return {msg: 'Successfully updated Todo reminded state', success: true};
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.SUCCESS);
         } catch(error) {
-            return {msg: 'Unable to set Todo reminded state.', success: false};
+            console.error(error);
+            return resHandling(CONSTANTS.RESPONSES.TODO.UPDATE.GENERIC_ERROR);
         }
     }
 
@@ -129,9 +146,9 @@ module.exports = class TodoRepository {
         const data = result[0];
         
         if (data) {
-            return { msg: 'Successfully fetched daily todos.', todos: data };
+            return {...resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('daily')), todos: data };
         } else {
-            return { msg: 'No todos found for today.' };
+            return resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('daily'));
         }
     }
     
@@ -140,9 +157,9 @@ module.exports = class TodoRepository {
         const result = await pool.query(`SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE deleted=TRUE AND user_id=?;`, [userId]);
         const data = result[0];
         if(data) {
-            return {msg: 'Successfully fetched all deleted todos.', todos: data}
+            return {...resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('deleted')), todos: data}
         } else {
-            return {msg: 'No deleted todos found.'};
+            return resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('deleted'));
         }
     }
 
@@ -150,9 +167,9 @@ module.exports = class TodoRepository {
         const result = await pool.query(`SELECT * FROM ${CONSTANTS.TODO_TABLE} WHERE completed=TRUE AND user_id=?;`, [userId]);
         const data = result[0];
         if(data) {
-            return {msg: 'Successfully fetched all completed todos.', todos: data}
+            return {...resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('completed')), todos: data}
         } else {
-            return {msg: 'No deleted todos found.'};
+            return resHandling(CONSTANTS.RESPONSES.TODO.GET_ALL.SUCCESS('completed'));
         }
     }
 

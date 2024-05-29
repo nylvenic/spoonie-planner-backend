@@ -139,6 +139,68 @@ module.exports = {
                 },
             },
         },
+        TODO: {
+            CREATE: {
+                SUCCESS: {
+                    msg: 'Successfully created todo.',
+                    success: true
+                },
+                GENERIC_ERROR: {
+                    msg: 'Something went wrong when creating the todo.',
+                    success: false
+                },
+                VALIDATION: (message) => {
+                    return {
+                        msg: message,
+                        success: false,
+                    }
+                }
+            },
+            GET_BY_ID: {
+                SUCCESS: {
+                    msg: 'Successfully fetched todo.',
+                    success: true
+                },
+                GENERIC_ERROR: {
+                    msg: 'Something went wrong when fetching the todo by ID.',
+                    success: false
+                },
+                TODO_NOT_FOUND: {
+                    msg: 'No todo with such id found.',
+                    success: false,
+                }
+            },
+            UPDATE: {
+                SUCCESS: {
+                    msg: 'Successfully updated todo.',
+                    success: true
+                },
+                GENERIC_ERROR: {
+                    msg: 'Something went wrong while updating the todo, internal error.',
+                    success: false
+                },
+            },
+            DELETE: {
+                SUCCESS: {
+                    msg: 'Successfully deleted todo.',
+                    success: true
+                },
+                GENERIC_ERROR: {
+                    msg: 'Something went wrong while deleting the todo, internal error.',
+                    success: false
+                },
+            },
+            GET_ALL: {
+                SUCCESS: (operation) => ({
+                    msg: `Successfully fetched all ${operation} todos.`,
+                    success: true
+                }), 
+                GENERIC_ERROR: (operation) => ({
+                    msg: `No ${operation} todos found.`,
+                    success: true
+                }),
+            }
+        },
         GENERIC: {
             'USER_NOT_FOUND': {
                 msg: 'User not found.',
