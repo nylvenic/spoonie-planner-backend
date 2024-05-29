@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const UserRepository = require('../repositories/UserRepository');
+const UserRepository = require('../repositories/UserRepository.js');
 
 const userRepository = new UserRepository();
 const authMiddleware = require('../utils/middleware/authMiddleware.js');

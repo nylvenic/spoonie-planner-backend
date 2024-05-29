@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const moment = require('moment');
 
 module.exports = class Todo {
     constructor({ text, description, date = null, cost = 1, completed = false, repeat = false, replenish = false, userId }) {
