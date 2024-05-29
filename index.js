@@ -10,7 +10,7 @@ const CONSTANTS = require('./utils/constants.js');
 const corsOptions = {
     origin: function (origin, callback) {
         // Add logic to allow specific origins or allow all if needed
-        const allowedOrigins = ['http://localhost:3000', 'http://api.spoonietodo.com', 'http://spoonietodo.com'];
+        const allowedOrigins = ['http://localhost:3000', 'https://api.spoonietodo.com', 'https://spoonietodo.com'];
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
         } else {
